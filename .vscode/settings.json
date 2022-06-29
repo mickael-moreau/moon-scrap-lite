@@ -1,0 +1,12 @@
+{
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#99FFCC",
+        "statusBar.debuggingBackground": "#99FFCC",
+        "statusBar.noFolderBackground": "#99FFCC",
+        "statussBar.prominentBackground": "#99FFCC"
+    },
+    "intelephense.environment.includePaths": [
+        "../WebAgencySources/e-commerce",
+        "../WA-wp-plugins/wa-config/src"
+    ]
+}

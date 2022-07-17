@@ -5,7 +5,7 @@
  *
  * @wordpress-plugin
  * Plugin Name:       MoonScrap Monwoo
- * Plugin URI:        https://moonkiosk.monwoo.com/en/missions/moon-scrap_en
+ * Plugin URI:        https://MoonScrap.monwoo.com/en/missions/moon-scrap_en
  * Description:       <strong>MoonScrap</strong> is a scrapper build for web scraping. Plugin done by Miguel Monwoo (service@monwoo.com)
  * Version:           0.0.1-alpha
  * Author:            Miguel Monwoo
@@ -51,27 +51,25 @@ namespace {
         die;
     }
 
-    $MoonKiosk_SHOULD_DEBUG = false;
-    if (defined('MoonKiosk_SHOULD_DEBUG')) {
-        $MoonKiosk_SHOULD_DEBUG = constant('MoonKiosk_SHOULD_DEBUG');
+    $MoonScrap_SHOULD_DEBUG = false;
+    if (defined('MoonScrap_SHOULD_DEBUG')) {
+        $MoonScrap_SHOULD_DEBUG = constant('MoonScrap_SHOULD_DEBUG');
     }
-    // $MoonKiosk_SHOULD_DEBUG = [true, true, false];
-    // $MoonKiosk_SHOULD_DEBUG = [true, true, true];
-    // $MoonKiosk_SHOULD_DEBUG = true;
+    // $MoonScrap_SHOULD_DEBUG = [true, true, false];
+    // $MoonScrap_SHOULD_DEBUG = [true, true, true];
+    // $MoonScrap_SHOULD_DEBUG = true;
 }
 
 namespace MoonScrap\Monwoo {
     use Exception;
     use WA\Config\App as WaConfigApp;
 
-    // 🌖🌖 Ensure wa-config-monwoo plugin dependency order : 🌖🌖
+    // 🌖🌖 Ensure monwoo-web-agency-config plugin dependency order : 🌖🌖
     if (!class_exists(WaConfigApp::class)) {
+
         $pluginFolder = realpath(dirname(__DIR__));
         $myPlugin = str_replace("$pluginFolder/", "", realpath(__FILE__));
 
-        delete_option( 'wa_config_master_load_plugin_path_opt' );
-
-        var_dump($myPlugin);
         // Move self load order at end
         $wasAtEnd = false;
         if ( strlen($myPlugin)
@@ -85,14 +83,28 @@ namespace MoonScrap\Monwoo {
             }
         }
         if ($wasAtEnd) {
-            throw new Exception("Missing wa-config-monwoo plugin dependency");
+            // Remove plugin from active list, since will break all if not wa-config deps
+            array_pop($plugins);
+            update_option( 'active_plugins', $plugins );
+            throw new Exception("Missing monwoo-web-agency-config plugin dependency");
         } else {
-            var_dump($plugins);
-            echo "\n Plugin order ajusted due to Missing class 'WA\Config\App',
-            please reload this page if not automatically done";
+            $noticeOpt = 'wa_config_admin_notices';
+            $notices = ($notices = get_transient($noticeOpt)) ? $notices : [];
+            $notices[] = [
+                'message' => __("MoonScrap wrong load order, did send plugin to last load order", "moon-scrap-lite"),
+                'notice-level' => 'notice-warning',
+            ];
+            set_transient($noticeOpt, $notices, 120);
+
+            // var_dump($plugins);
+            echo "\n Plugin order ajusted due to Missing class 'WA\Config\App', please reload this page if not automatically done";
             $redirectUrl = admin_url( 'plugins.php' );
+            // wp_redirect($redirectUrl); // Not available yet, need to include stuff
             header( "Location: $redirectUrl", true, 302 );
-            exit;
+            exit; // TODO : test mode will fail with real exit, need to be plugable exit function ... 
+            // wp_die is removing the redirect header ?
+            // wp_die("MoonScrap sended to last load order, please reload");
+            // wp_die();
         }
     }
 
@@ -100,7 +112,7 @@ namespace MoonScrap\Monwoo {
     $current_Version = "0.0.1-alpha";
     if (class_exists(App::class)) { // another class load
         $existing_Version = App::PLUGIN_VERSION;
-        $app = App::instanceByRelativePath($pluginSrcPath, -1);
+        $app = App::instanceByRelativeFile($pluginSrcPath, -1);
         $logMsg = "$pluginSrcPath : Will not load WA\\Config\\ since
         already loaded somewhere else at version $existing_Version
         for requested version $current_Version";
@@ -141,9 +153,16 @@ namespace MoonScrap\Monwoo {
                 string $iPrefix,
                 $shouldDebug
             ) {
+                $this->waConfigTextDomain =  'moon-scrap-lite'/**📜*/;
                 WaConfigApp::__construct(
                     $siteBaseHref, $pluginFile, $iPrefix, $shouldDebug
                 );
+
+                $this->eReviewDataStoreKey = 'wa_e_review_moon_scrap_lite_data_store';
+
+                add_filter("pre_update_option_{$this->eReviewDataStoreKey}",
+                [$this, "e_review_data_pre_update_filter"], 10, 3);
+    
             }
         }
     }
@@ -157,7 +176,7 @@ namespace {
         site_url(),
         __FILE__,
         'moon-scrap',
-        $MoonKiosk_SHOULD_DEBUG,
+        $MoonScrap_SHOULD_DEBUG,
     );
 
     $moonScrap_plugin->bootstrap();
